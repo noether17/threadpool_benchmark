@@ -10,30 +10,12 @@
 
 template <typename AccFunc>
 void thread_pool_euler(std::span<Vector3d> pos, std::span<Vector3d> vel,
-                       double t0, double tf, double dt, AccFunc,
+                       double t0, double tf, double dt, AccFunc acc_func,
                        int n_threads) {
   auto tp = ThreadPool{static_cast<std::size_t>(n_threads)};
   auto acc = std::vector<Vector3d>(pos.size());
   for (auto t = t0; t < tf; t += dt) {
-    tp.call_parallel_kernel(
-        [](std::size_t i, std::span<Vector3d const> pos,
-           std::span<Vector3d> acc) {
-          auto& current_acc = acc[i];
-          current_acc = Vector3d{};
-          for (std::size_t j = 0; j < pos.size(); ++j) {
-            if (i == j) {
-              continue;
-            }
-            auto disp = Vector3d{pos[j].x - pos[i].x, pos[j].y - pos[i].y,
-                                 pos[j].z - pos[i].z};
-            auto dist_sq = disp.x * disp.x + disp.y * disp.y + disp.z * disp.z;
-            auto denominator = std::sqrt(dist_sq) * (dist_sq + softening_sq);
-            current_acc.x += disp.x / denominator;
-            current_acc.y += disp.y / denominator;
-            current_acc.z += disp.z / denominator;
-          }
-        },
-        pos.size(), pos, acc);
+    tp.call_parallel_kernel(acc_func, pos.size(), pos, acc);
 
     tp.call_parallel_kernel(
         [](std::size_t i, double dt, std::span<Vector3d> pos,
@@ -74,7 +56,7 @@ int main(int argc, char* argv[]) {
   auto tf = characteristic_time(N, L);
   auto dt = 1.0e-3 * (tf - t0);
   auto start = std::chrono::high_resolution_clock::now();
-  thread_pool_euler(pos, vel, t0, tf, dt, nullptr, n_threads);
+  thread_pool_euler(pos, vel, t0, tf, dt, threadpool_gravity, n_threads);
   auto duration = std::chrono::duration<double, std::milli>(
       std::chrono::high_resolution_clock::now() - start);
   std::cout << "Execution time: " << duration.count() << "ms\n";

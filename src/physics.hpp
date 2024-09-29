@@ -21,3 +21,6 @@ auto constexpr characteristic_time(int N, double L) {
 
 void threaded_gravity(std::span<Vector3d const> pos, int offset,
                       std::span<Vector3d> acc);
+
+void threadpool_gravity(std::size_t i, std::span<Vector3d const> pos,
+                        std::span<Vector3d> acc);
