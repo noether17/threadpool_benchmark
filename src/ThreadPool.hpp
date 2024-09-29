@@ -2,6 +2,7 @@
 
 #include <condition_variable>
 #include <functional>
+#include <latch>
 #include <mutex>
 #include <new>
 #include <queue>
@@ -50,26 +51,34 @@ class ThreadPool {
                             Args&&... args) {
     auto n_threads = m_threads.size();
     auto items_per_thread = (total_items + n_threads - 1) / n_threads;
-    // prevent false sharing
+
+    // prevent false sharing, assuming that all containers being modified are
+    // aligned on cache lines.
     items_per_thread =
         ((items_per_thread + std::hardware_destructive_interference_size - 1) /
          std::hardware_destructive_interference_size) *
         std::hardware_destructive_interference_size;
+
+    auto latch = std::latch{static_cast<std::ptrdiff_t>(n_threads)};
     for (std::size_t thread_idx = 0; thread_idx < n_threads; ++thread_idx) {
       auto thread_begin = thread_idx * items_per_thread;
       auto thread_end =
           std::min((thread_idx + 1) * items_per_thread, total_items);
       {
         auto lock = std::unique_lock{m_mx};
-        m_tasks.emplace([thread_begin, thread_end, &kernel, &args...]() {
-          for (auto i = thread_begin; i < thread_end; ++i) {
-            kernel(i, args...);
-          }
-        });
+        m_tasks.emplace(
+            [&latch, thread_begin, thread_end, &kernel, &args...]() {
+              for (auto i = thread_begin; i < thread_end; ++i) {
+                kernel(i, args...);
+              }
+              latch.count_down();
+            });
       }
 
       m_cv.notify_one();
     }
+
+    latch.wait();
   }
 
  private:
