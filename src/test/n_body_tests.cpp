@@ -65,6 +65,23 @@ class NBodyTest : public testing::Test {
 
     return std::make_tuple(std::move(pos), std::move(vel));
   }
+
+  auto static compare_states_to_reference(std::span<Vector3d const> pos,
+                                          std::span<Vector3d> const vel) {
+    auto N = pos.size();
+    if (!precomputed_final_states.count(N)) {
+      precomputed_final_states[N] = run_simulation(single_threaded_sim, N, 1);
+    }
+    auto const& [ref_pos, ref_vel] = precomputed_final_states[N];
+    for (std::size_t i = 0; i < N; ++i) {
+      EXPECT_DOUBLE_EQ(ref_pos[i].x, pos[i].x);
+      EXPECT_DOUBLE_EQ(ref_pos[i].y, pos[i].y);
+      EXPECT_DOUBLE_EQ(ref_pos[i].z, pos[i].z);
+      EXPECT_DOUBLE_EQ(ref_vel[i].x, vel[i].x);
+      EXPECT_DOUBLE_EQ(ref_vel[i].y, vel[i].y);
+      EXPECT_DOUBLE_EQ(ref_vel[i].z, vel[i].z);
+    }
+  }
 };
 
 TEST_F(NBodyTest, Threaded1024P8T) {
@@ -73,16 +90,5 @@ TEST_F(NBodyTest, Threaded1024P8T) {
 
   auto [pos, vel] = run_simulation(threaded_sim, N, n_threads);
 
-  if (!precomputed_final_states.count(N)) {
-    precomputed_final_states[N] = run_simulation(single_threaded_sim, N, 1);
-  }
-  auto const& [st_pos, st_vel] = precomputed_final_states[N];
-  for (std::size_t i = 0; i < N; ++i) {
-    EXPECT_DOUBLE_EQ(st_pos[i].x, pos[i].x);
-    EXPECT_DOUBLE_EQ(st_pos[i].y, pos[i].y);
-    EXPECT_DOUBLE_EQ(st_pos[i].z, pos[i].z);
-    EXPECT_DOUBLE_EQ(st_vel[i].x, vel[i].x);
-    EXPECT_DOUBLE_EQ(st_vel[i].y, vel[i].y);
-    EXPECT_DOUBLE_EQ(st_vel[i].z, vel[i].z);
-  }
+  compare_states_to_reference(pos, vel);
 }
