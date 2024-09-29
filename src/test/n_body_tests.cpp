@@ -83,6 +83,15 @@ class NBodyTest : public testing::Test {
 };
 
 // Threaded tests
+// TEST_F(NBodyTest, Threaded2P8T) {
+//  auto constexpr N = 2;  // N not a multiple of n_threads violates contract.
+//  auto constexpr n_threads = 8;
+//
+//  auto [pos, vel] = run_simulation(threaded_sim, N, n_threads);
+//
+//  compare_states_to_reference(pos, vel);
+// }
+
 TEST_F(NBodyTest, Threaded8P8T) {
   auto constexpr N = 8;
   auto constexpr n_threads = 8;
@@ -111,6 +120,15 @@ TEST_F(NBodyTest, Threaded1024P8T) {
 }
 
 // Threadpool tests
+TEST_F(NBodyTest, Threadpool2P8T) {
+  auto constexpr N = 2;
+  auto constexpr n_threads = 8;
+
+  auto [pos, vel] = run_simulation(threadpool_sim, N, n_threads);
+
+  compare_states_to_reference(pos, vel);
+}
+
 TEST_F(NBodyTest, Threadpool8P8T) {
   auto constexpr N = 8;
   auto constexpr n_threads = 8;
