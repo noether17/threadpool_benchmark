@@ -84,11 +84,40 @@ class NBodyTest : public testing::Test {
   }
 };
 
+// Threaded tests
+TEST_F(NBodyTest, Threaded64P8T) {
+  auto constexpr N = 64;
+  auto constexpr n_threads = 8;
+
+  auto [pos, vel] = run_simulation(threaded_sim, N, n_threads);
+
+  compare_states_to_reference(pos, vel);
+}
+
 TEST_F(NBodyTest, Threaded1024P8T) {
   auto constexpr N = 1024;
   auto constexpr n_threads = 8;
 
   auto [pos, vel] = run_simulation(threaded_sim, N, n_threads);
+
+  compare_states_to_reference(pos, vel);
+}
+
+// Threadpool tests
+TEST_F(NBodyTest, Threadpool64P8T) {
+  auto constexpr N = 64;
+  auto constexpr n_threads = 8;
+
+  auto [pos, vel] = run_simulation(threadpool_sim, N, n_threads);
+
+  compare_states_to_reference(pos, vel);
+}
+
+TEST_F(NBodyTest, Threadpool1024P8T) {
+  auto constexpr N = 1024;
+  auto constexpr n_threads = 8;
+
+  auto [pos, vel] = run_simulation(threadpool_sim, N, n_threads);
 
   compare_states_to_reference(pos, vel);
 }
