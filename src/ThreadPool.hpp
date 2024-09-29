@@ -2,7 +2,6 @@
 
 #include <condition_variable>
 #include <functional>
-#include <iostream>
 #include <mutex>
 #include <new>
 #include <queue>
@@ -48,9 +47,10 @@ class ThreadPool {
 
   template <typename ParallelKernel, typename... Args>
   void call_parallel_kernel(ParallelKernel kernel, std::size_t total_items,
-                            Args... args) {
+                            Args&&... args) {
     auto n_threads = m_threads.size();
     auto items_per_thread = (total_items + n_threads - 1) / n_threads;
+    // prevent false sharing
     items_per_thread =
         ((items_per_thread + std::hardware_destructive_interference_size - 1) /
          std::hardware_destructive_interference_size) *
@@ -59,9 +59,6 @@ class ThreadPool {
       auto thread_begin = thread_idx * items_per_thread;
       auto thread_end =
           std::min((thread_idx + 1) * items_per_thread, total_items);
-      std::cout << "\nthread_idx: " << thread_idx
-                << "\nthread_begin: " << thread_begin
-                << "\nthread_end: " << thread_end << '\n';
       {
         auto lock = std::unique_lock{m_mx};
         m_tasks.emplace([thread_begin, thread_end, &kernel, &args...]() {
