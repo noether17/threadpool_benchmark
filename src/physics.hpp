@@ -19,7 +19,9 @@ auto constexpr characteristic_time(int N, double L) {
   return std::sqrt(L * L * L / (G * N));
 }
 
-void threaded_gravity(std::span<Vector3d const> pos, int offset,
+void single_threaded_gravity(std::span<Vector3d> pos, std::span<Vector3d> acc);
+
+void threaded_gravity(std::span<Vector3d const> pos, std::size_t offset,
                       std::span<Vector3d> acc);
 
 void threadpool_gravity(std::size_t i, std::span<Vector3d const> pos,

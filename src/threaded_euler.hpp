@@ -34,13 +34,14 @@ void thread_euler_loop(std::span<Vector3d> pos, std::span<Vector3d> vel,
 
 template <typename AccFunc>
 void threaded_euler(std::span<Vector3d> pos, std::span<Vector3d> vel, double t0,
-                    double tf, double dt, AccFunc acc_func, int n_threads) {
+                    double tf, double dt, AccFunc acc_func,
+                    std::size_t n_threads) {
   auto system_size = std::ssize(pos);
   auto thread_size = system_size / n_threads;
   auto acc = std::vector<Vector3d>(pos.size());
-  auto barrier = std::barrier{n_threads};
+  auto barrier = std::barrier{static_cast<int>(n_threads)};
   auto threads = std::vector<std::jthread>{};
-  for (auto i = 0; i < n_threads; ++i) {
+  for (std::size_t i = 0; i < n_threads; ++i) {
     auto offset = i * thread_size;
     auto thread_vel_portion = vel.subspan(offset, thread_size);
     auto thread_acc_portion =

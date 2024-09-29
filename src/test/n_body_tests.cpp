@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "physics.hpp"
+#include "single_threaded_euler.hpp"
 #include "threaded_euler.hpp"
 #include "threadpool_euler.hpp"
 
@@ -31,9 +32,12 @@ struct Simulator {
   std::function<AccFunc> acc_func;
 };
 
-auto const threaded_sim = Simulator<decltype(threaded_gravity)>(
+auto const single_threaded_sim = Simulator<decltype(single_threaded_gravity)>{
+    single_threaded_euler<std::function<decltype(single_threaded_gravity)>>,
+    single_threaded_gravity};
+auto const threaded_sim = Simulator<decltype(threaded_gravity)>{
     threaded_euler<std::function<decltype(threaded_gravity)>>,
-    threaded_gravity);
+    threaded_gravity};
 auto const threadpool_sim = Simulator<decltype(threadpool_gravity)>{
     threadpool_euler<std::function<decltype(threadpool_gravity)>>,
     threadpool_gravity};
@@ -41,7 +45,9 @@ auto const threadpool_sim = Simulator<decltype(threadpool_gravity)>{
 class NBodyTest : public testing::Test {
  protected:
   static inline std::unordered_map<std::size_t, decltype(initialize_state(0))>
-      precomputed_states{};
+      precomputed_initial_states{};
+  static inline std::unordered_map<std::size_t, decltype(initialize_state(0))>
+      precomputed_final_states{};
   static constexpr int n_steps = 1000;
 
   template <typename SimulatorType>
@@ -51,11 +57,10 @@ class NBodyTest : public testing::Test {
     auto tf = characteristic_time(N, L);
     auto dt = (tf - t0) / n_steps;
 
-    if (!precomputed_states.count(N)) {
-      precomputed_states[N] = initialize_state(N);
+    if (!precomputed_initial_states.count(N)) {
+      precomputed_initial_states[N] = initialize_state(N);
     }
-    auto [pos, vel] = precomputed_states[N];
-
+    auto [pos, vel] = precomputed_initial_states[N];
     sim.solver(pos, vel, t0, tf, dt, sim.acc_func, n_threads);
 
     return std::make_tuple(std::move(pos), std::move(vel));
@@ -65,14 +70,19 @@ class NBodyTest : public testing::Test {
 TEST_F(NBodyTest, Threaded1024P8T) {
   auto constexpr N = 1024;
   auto constexpr n_threads = 8;
+
   auto [pos, vel] = run_simulation(threaded_sim, N, n_threads);
 
-  auto filename = std::stringstream{};
-  filename << "test_threaded_n_body_output_" << N << "_particles_" << n_threads
-           << "_threads.txt";
-  auto output_file = std::ofstream{filename.str()};
-  for (auto const& p : pos) {
-    output_file << '{' << p.x << ',' << p.y << ',' << p.z << '}';
+  if (!precomputed_final_states.count(N)) {
+    precomputed_final_states[N] = run_simulation(single_threaded_sim, N, 1);
   }
-  output_file << '\n';
+  auto const& [st_pos, st_vel] = precomputed_final_states[N];
+  for (std::size_t i = 0; i < N; ++i) {
+    EXPECT_DOUBLE_EQ(st_pos[i].x, pos[i].x);
+    EXPECT_DOUBLE_EQ(st_pos[i].y, pos[i].y);
+    EXPECT_DOUBLE_EQ(st_pos[i].z, pos[i].z);
+    EXPECT_DOUBLE_EQ(st_vel[i].x, vel[i].x);
+    EXPECT_DOUBLE_EQ(st_vel[i].y, vel[i].y);
+    EXPECT_DOUBLE_EQ(st_vel[i].z, vel[i].z);
+  }
 }
