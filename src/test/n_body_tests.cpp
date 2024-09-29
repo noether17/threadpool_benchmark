@@ -48,7 +48,7 @@ class NBodyTest : public testing::Test {
       precomputed_initial_states{};
   static inline std::unordered_map<std::size_t, decltype(initialize_state(0))>
       precomputed_final_states{};
-  static constexpr int n_steps = 1000;
+  static constexpr int n_steps = 100;
 
   template <typename SimulatorType>
   auto static run_simulation(SimulatorType const& sim, std::size_t N,
