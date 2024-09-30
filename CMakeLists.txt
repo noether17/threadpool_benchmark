@@ -10,4 +10,6 @@ enable_testing()
 find_package(GTest 1.14.0 REQUIRED)
 include_directories({GTEST_INCLUDE_DIRS})
 
+find_package(benchmark 1.8.2 REQUIRED)
+
 add_subdirectory(src)
