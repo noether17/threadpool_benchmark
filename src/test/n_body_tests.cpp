@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "parallel_algo_euler.hpp"
 #include "physics.hpp"
 #include "single_threaded_euler.hpp"
 #include "threaded_euler.hpp"
@@ -33,6 +34,8 @@ struct Simulator {
 auto const single_threaded_sim = Simulator<decltype(single_threaded_gravity)>{
     single_threaded_euler<std::function<decltype(single_threaded_gravity)>>,
     single_threaded_gravity};
+auto const parallel_algo_sim =
+    Simulator<void()>{parallel_algo_euler<std::function<void()>>, [] {}};
 auto const threaded_sim = Simulator<decltype(threaded_gravity)>{
     threaded_euler<std::function<decltype(threaded_gravity)>>,
     threaded_gravity};
@@ -81,6 +84,39 @@ class NBodyTest : public testing::Test {
     }
   }
 };
+
+// ParallelAlgo tests
+TEST_F(NBodyTest, ParallelAlgo2P8T) {
+  auto constexpr N = 2;
+
+  auto [pos, vel] = run_simulation(parallel_algo_sim, N, 0);
+
+  compare_states_to_reference(pos, vel);
+}
+
+TEST_F(NBodyTest, ParallelAlgo8P8T) {
+  auto constexpr N = 8;
+
+  auto [pos, vel] = run_simulation(parallel_algo_sim, N, 0);
+
+  compare_states_to_reference(pos, vel);
+}
+
+TEST_F(NBodyTest, ParallelAlgo64P8T) {
+  auto constexpr N = 64;
+
+  auto [pos, vel] = run_simulation(parallel_algo_sim, N, 0);
+
+  compare_states_to_reference(pos, vel);
+}
+
+TEST_F(NBodyTest, ParallelAlgo1024P8T) {
+  auto constexpr N = 1024;
+
+  auto [pos, vel] = run_simulation(parallel_algo_sim, N, 0);
+
+  compare_states_to_reference(pos, vel);
+}
 
 // Threaded tests
 // TEST_F(NBodyTest, Threaded2P8T) {
