@@ -5,6 +5,7 @@
 #include <tuple>
 #include <vector>
 
+#include "parallel_algo_euler.hpp"
 #include "physics.hpp"
 #include "single_threaded_euler.hpp"
 #include "threaded_euler.hpp"
@@ -34,6 +35,30 @@ void static BM_NBodySingleThreaded(benchmark::State& state) {
   for (auto _ : state) {
     auto start = std::chrono::high_resolution_clock::now();
     single_threaded_euler(pos, vel, t0, tf, dt, single_threaded_gravity, 1);
+    auto end = std::chrono::high_resolution_clock::now();
+    auto elapsed_seconds =
+        std::chrono::duration_cast<std::chrono::duration<double>>(end - start);
+    state.SetIterationTime(elapsed_seconds.count());
+    benchmark::DoNotOptimize(pos.data());
+    benchmark::DoNotOptimize(vel.data());
+    benchmark::ClobberMemory();
+  }
+  state.SetItemsProcessed(n_steps * state.iterations());
+}
+
+void static BM_NBodyParallelAlgo(benchmark::State& state) {
+  auto N = state.range(0);
+  // auto n_threads = state.range(1); // n_threads not used for algo impl.
+  auto n_steps = state.range(2);
+
+  auto t0 = 0.0;
+  auto tf = characteristic_time(N, L);
+  auto dt = (tf - t0) / n_steps;
+  auto [pos, vel] = initialize_state(N);
+
+  for (auto _ : state) {
+    auto start = std::chrono::high_resolution_clock::now();
+    parallel_algo_euler(pos, vel, t0, tf, dt, [] {}, 0);
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed_seconds =
         std::chrono::duration_cast<std::chrono::duration<double>>(end - start);
@@ -100,6 +125,12 @@ BENCHMARK(BM_NBodySingleThreaded)
     ->Iterations(1)
     ->UseManualTime();
 
+// Parallel Algo
+BENCHMARK(BM_NBodyParallelAlgo)
+    ->Args({16, 1, 10'000})
+    ->Iterations(1)
+    ->UseManualTime();
+
 // 4 Threads
 BENCHMARK(BM_NBodyThreaded)
     ->Args({16, 4, 10'000})
@@ -133,6 +164,12 @@ BENCHMARK(BM_NBodyThreadpool)
 // 128 Particles
 // Single-Threaded
 BENCHMARK(BM_NBodySingleThreaded)
+    ->Args({128, 1, 10'000})
+    ->Iterations(1)
+    ->UseManualTime();
+
+// Parallel Algo
+BENCHMARK(BM_NBodyParallelAlgo)
     ->Args({128, 1, 10'000})
     ->Iterations(1)
     ->UseManualTime();
@@ -174,6 +211,12 @@ BENCHMARK(BM_NBodySingleThreaded)
     ->Iterations(1)
     ->UseManualTime();
 
+// Parallel Algo
+BENCHMARK(BM_NBodyParallelAlgo)
+    ->Args({1024, 1, 10'000})
+    ->Iterations(1)
+    ->UseManualTime();
+
 // 4 Threads
 BENCHMARK(BM_NBodyThreaded)
     ->Args({1024, 4, 10'000})
@@ -208,6 +251,12 @@ BENCHMARK(BM_NBodyThreadpool)
 // (Reduce n_steps so that single threaded can finish in under an hour.)
 // Single-Threaded
 BENCHMARK(BM_NBodySingleThreaded)
+    ->Args({8192, 1, 1'000})
+    ->Iterations(1)
+    ->UseManualTime();
+
+// Parallel Algo
+BENCHMARK(BM_NBodyParallelAlgo)
     ->Args({8192, 1, 1'000})
     ->Iterations(1)
     ->UseManualTime();
