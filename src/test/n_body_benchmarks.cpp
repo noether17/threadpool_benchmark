@@ -1,10 +1,12 @@
 #include <benchmark/benchmark.h>
 
 #include <chrono>
+#include <cstring>
 #include <random>
 #include <tuple>
 #include <vector>
 
+#include "atomic_threadpool_euler.hpp"
 #include "parallel_algo_euler.hpp"
 #include "physics.hpp"
 #include "single_threaded_euler.hpp"
@@ -118,6 +120,37 @@ void static BM_NBodyThreadpool(benchmark::State& state) {
   state.SetItemsProcessed(n_steps * state.iterations());
 }
 
+void static BM_NBodyAtomicThreadpool(benchmark::State& state) {
+  auto N = state.range(0);
+  auto n_threads = state.range(1);
+  auto n_steps = state.range(2);
+
+  auto t0 = 0.0;
+  auto tf = characteristic_time(N, L);
+  auto dt = (tf - t0) / n_steps;
+  auto [pos_non_atomic, vel_non_atomic] = initialize_state(N);
+  auto pos = std::vector<AtomicVector3d>(pos_non_atomic.size());
+  memcpy(reinterpret_cast<void*>(pos.data()), pos_non_atomic.data(),
+         pos.size() * sizeof(Vector3d));
+  auto vel = std::vector<AtomicVector3d>(vel_non_atomic.size());
+  memcpy(reinterpret_cast<void*>(vel.data()), vel_non_atomic.data(),
+         vel.size() * sizeof(Vector3d));
+
+  for (auto _ : state) {
+    auto start = std::chrono::high_resolution_clock::now();
+    atomic_threadpool_euler(pos, vel, t0, tf, dt, atomic_threadpool_gravity,
+                            n_threads);
+    auto end = std::chrono::high_resolution_clock::now();
+    auto elapsed_seconds =
+        std::chrono::duration_cast<std::chrono::duration<double>>(end - start);
+    state.SetIterationTime(elapsed_seconds.count());
+    benchmark::DoNotOptimize(pos.data());
+    benchmark::DoNotOptimize(vel.data());
+    benchmark::ClobberMemory();
+  }
+  state.SetItemsProcessed(n_steps * state.iterations());
+}
+
 // 16 Particles
 // Single-Threaded
 BENCHMARK(BM_NBodySingleThreaded)
@@ -140,6 +173,10 @@ BENCHMARK(BM_NBodyThreadpool)
     ->Args({16, 4, 10'000})
     ->Iterations(1)
     ->UseManualTime();
+BENCHMARK(BM_NBodyAtomicThreadpool)
+    ->Args({16, 4, 10'000})
+    ->Iterations(1)
+    ->UseManualTime();
 
 // 8 Threads
 BENCHMARK(BM_NBodyThreaded)
@@ -150,6 +187,10 @@ BENCHMARK(BM_NBodyThreadpool)
     ->Args({16, 8, 10'000})
     ->Iterations(1)
     ->UseManualTime();
+BENCHMARK(BM_NBodyAtomicThreadpool)
+    ->Args({16, 8, 10'000})
+    ->Iterations(1)
+    ->UseManualTime();
 
 // 16 Threads
 BENCHMARK(BM_NBodyThreaded)
@@ -157,6 +198,10 @@ BENCHMARK(BM_NBodyThreaded)
     ->Iterations(1)
     ->UseManualTime();
 BENCHMARK(BM_NBodyThreadpool)
+    ->Args({16, 16, 10'000})
+    ->Iterations(1)
+    ->UseManualTime();
+BENCHMARK(BM_NBodyAtomicThreadpool)
     ->Args({16, 16, 10'000})
     ->Iterations(1)
     ->UseManualTime();
@@ -183,6 +228,10 @@ BENCHMARK(BM_NBodyThreadpool)
     ->Args({128, 4, 10'000})
     ->Iterations(1)
     ->UseManualTime();
+BENCHMARK(BM_NBodyAtomicThreadpool)
+    ->Args({128, 4, 10'000})
+    ->Iterations(1)
+    ->UseManualTime();
 
 // 8 Threads
 BENCHMARK(BM_NBodyThreaded)
@@ -193,6 +242,10 @@ BENCHMARK(BM_NBodyThreadpool)
     ->Args({128, 8, 10'000})
     ->Iterations(1)
     ->UseManualTime();
+BENCHMARK(BM_NBodyAtomicThreadpool)
+    ->Args({128, 8, 10'000})
+    ->Iterations(1)
+    ->UseManualTime();
 
 // 16 Threads
 BENCHMARK(BM_NBodyThreaded)
@@ -200,6 +253,10 @@ BENCHMARK(BM_NBodyThreaded)
     ->Iterations(1)
     ->UseManualTime();
 BENCHMARK(BM_NBodyThreadpool)
+    ->Args({128, 16, 10'000})
+    ->Iterations(1)
+    ->UseManualTime();
+BENCHMARK(BM_NBodyAtomicThreadpool)
     ->Args({128, 16, 10'000})
     ->Iterations(1)
     ->UseManualTime();
@@ -226,6 +283,10 @@ BENCHMARK(BM_NBodyThreadpool)
     ->Args({1024, 4, 10'000})
     ->Iterations(1)
     ->UseManualTime();
+BENCHMARK(BM_NBodyAtomicThreadpool)
+    ->Args({1024, 4, 10'000})
+    ->Iterations(1)
+    ->UseManualTime();
 
 // 8 Threads
 BENCHMARK(BM_NBodyThreaded)
@@ -236,6 +297,10 @@ BENCHMARK(BM_NBodyThreadpool)
     ->Args({1024, 8, 10'000})
     ->Iterations(1)
     ->UseManualTime();
+BENCHMARK(BM_NBodyAtomicThreadpool)
+    ->Args({1024, 8, 10'000})
+    ->Iterations(1)
+    ->UseManualTime();
 
 // 16 Threads
 BENCHMARK(BM_NBodyThreaded)
@@ -243,6 +308,10 @@ BENCHMARK(BM_NBodyThreaded)
     ->Iterations(1)
     ->UseManualTime();
 BENCHMARK(BM_NBodyThreadpool)
+    ->Args({1024, 16, 10'000})
+    ->Iterations(1)
+    ->UseManualTime();
+BENCHMARK(BM_NBodyAtomicThreadpool)
     ->Args({1024, 16, 10'000})
     ->Iterations(1)
     ->UseManualTime();
@@ -270,6 +339,10 @@ BENCHMARK(BM_NBodyThreadpool)
     ->Args({8192, 4, 1'000})
     ->Iterations(1)
     ->UseManualTime();
+BENCHMARK(BM_NBodyAtomicThreadpool)
+    ->Args({8192, 4, 1'000})
+    ->Iterations(1)
+    ->UseManualTime();
 
 // 8 Threads
 BENCHMARK(BM_NBodyThreaded)
@@ -280,6 +353,10 @@ BENCHMARK(BM_NBodyThreadpool)
     ->Args({8192, 8, 1'000})
     ->Iterations(1)
     ->UseManualTime();
+BENCHMARK(BM_NBodyAtomicThreadpool)
+    ->Args({8192, 8, 1'000})
+    ->Iterations(1)
+    ->UseManualTime();
 
 // 16 Threads
 BENCHMARK(BM_NBodyThreaded)
@@ -287,6 +364,10 @@ BENCHMARK(BM_NBodyThreaded)
     ->Iterations(1)
     ->UseManualTime();
 BENCHMARK(BM_NBodyThreadpool)
+    ->Args({8192, 16, 1'000})
+    ->Iterations(1)
+    ->UseManualTime();
+BENCHMARK(BM_NBodyAtomicThreadpool)
     ->Args({8192, 16, 1'000})
     ->Iterations(1)
     ->UseManualTime();

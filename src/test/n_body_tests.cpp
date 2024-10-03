@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "atomic_threadpool_euler.hpp"
 #include "parallel_algo_euler.hpp"
 #include "physics.hpp"
 #include "single_threaded_euler.hpp"
@@ -42,6 +43,33 @@ auto const threaded_sim = Simulator<decltype(threaded_gravity)>{
 auto const threadpool_sim = Simulator<decltype(threadpool_gravity)>{
     threadpool_euler<std::function<decltype(threadpool_gravity)>>,
     threadpool_gravity};
+
+template <typename AccFunc>
+void atomic_threadpool_euler_wrapper(std::span<Vector3d> pos,
+                                     std::span<Vector3d> vel, double t0,
+                                     double tf, double dt, AccFunc acc_func,
+                                     int n_threads) {
+  auto pos_atomic = std::vector<AtomicVector3d>(pos.size());
+  memcpy(reinterpret_cast<void*>(pos_atomic.data()), pos.data(),
+         pos.size() * sizeof(Vector3d));
+  auto vel_atomic = std::vector<AtomicVector3d>(vel.size());
+  memcpy(reinterpret_cast<void*>(vel_atomic.data()), vel.data(),
+         vel.size() * sizeof(Vector3d));
+
+  atomic_threadpool_euler(pos_atomic, vel_atomic, t0, tf, dt, acc_func,
+                          n_threads);
+
+  memcpy(pos.data(), reinterpret_cast<void*>(pos_atomic.data()),
+         pos.size() * sizeof(Vector3d));
+  memcpy(vel.data(), reinterpret_cast<void*>(vel_atomic.data()),
+         vel.size() * sizeof(Vector3d));
+}
+
+auto const atomic_threadpool_sim =
+    Simulator<decltype(atomic_threadpool_gravity)>{
+        atomic_threadpool_euler_wrapper<
+            std::function<decltype(atomic_threadpool_gravity)>>,
+        atomic_threadpool_gravity};
 
 class NBodyTest : public testing::Test {
  protected:
@@ -188,6 +216,43 @@ TEST_F(NBodyTest, Threadpool1024P8T) {
   auto constexpr n_threads = 8;
 
   auto [pos, vel] = run_simulation(threadpool_sim, N, n_threads);
+
+  compare_states_to_reference(pos, vel);
+}
+
+// Atomic Threadpool tests
+TEST_F(NBodyTest, AtomicThreadpool2P8T) {
+  auto constexpr N = 2;
+  auto constexpr n_threads = 8;
+
+  auto [pos, vel] = run_simulation(atomic_threadpool_sim, N, n_threads);
+
+  compare_states_to_reference(pos, vel);
+}
+
+TEST_F(NBodyTest, AtomicThreadpool8P8T) {
+  auto constexpr N = 8;
+  auto constexpr n_threads = 8;
+
+  auto [pos, vel] = run_simulation(atomic_threadpool_sim, N, n_threads);
+
+  compare_states_to_reference(pos, vel);
+}
+
+TEST_F(NBodyTest, AtomicThreadpool64P8T) {
+  auto constexpr N = 64;
+  auto constexpr n_threads = 8;
+
+  auto [pos, vel] = run_simulation(atomic_threadpool_sim, N, n_threads);
+
+  compare_states_to_reference(pos, vel);
+}
+
+TEST_F(NBodyTest, AtomicThreadpool1024P8T) {
+  auto constexpr N = 1024;
+  auto constexpr n_threads = 8;
+
+  auto [pos, vel] = run_simulation(atomic_threadpool_sim, N, n_threads);
 
   compare_states_to_reference(pos, vel);
 }
