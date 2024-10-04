@@ -4,7 +4,6 @@
 #include <functional>
 #include <latch>
 #include <mutex>
-#include <new>
 #include <queue>
 #include <thread>
 #include <vector>
@@ -18,7 +17,7 @@ class ThreadPool {
           auto task = std::function<void()>{};
           {
             auto lock = std::unique_lock{m_mx};
-            m_cv.wait(lock, [this]() { return m_stop || !m_tasks.empty(); });
+            m_cv.wait(lock, [this] { return m_stop || !m_tasks.empty(); });
 
             if (m_stop and m_tasks.empty()) {
               break;
@@ -52,12 +51,12 @@ class ThreadPool {
     auto n_threads = m_threads.size();
     auto items_per_thread = (total_items + n_threads - 1) / n_threads;
 
-    // prevent false sharing, assuming that all containers being modified are
-    // aligned on cache lines.
-    items_per_thread =
-        ((items_per_thread + std::hardware_destructive_interference_size - 1) /
-         std::hardware_destructive_interference_size) *
-        std::hardware_destructive_interference_size;
+    //// prevent false sharing, assuming that all containers being modified are
+    //// aligned on cache lines.
+    // auto constexpr cache_line_size = 64;
+    // items_per_thread =
+    //     ((items_per_thread + cache_line_size - 1) / cache_line_size) *
+    //     cache_line_size;
 
     auto latch = std::latch{static_cast<std::ptrdiff_t>(n_threads)};
     for (std::size_t thread_idx = 0; thread_idx < n_threads; ++thread_idx) {

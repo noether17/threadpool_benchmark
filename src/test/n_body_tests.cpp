@@ -184,6 +184,15 @@ TEST_F(NBodyTest, Threaded1024P8T) {
 }
 
 // Threadpool tests
+TEST_F(NBodyTest, Threadpool2P4T) {
+  auto constexpr N = 2;
+  auto constexpr n_threads = 4;
+
+  auto [pos, vel] = run_simulation(threadpool_sim, N, n_threads);
+
+  compare_states_to_reference(pos, vel);
+}
+
 TEST_F(NBodyTest, Threadpool2P8T) {
   auto constexpr N = 2;
   auto constexpr n_threads = 8;
@@ -193,8 +202,26 @@ TEST_F(NBodyTest, Threadpool2P8T) {
   compare_states_to_reference(pos, vel);
 }
 
-TEST_F(NBodyTest, Threadpool8P8T) {
-  auto constexpr N = 8;
+TEST_F(NBodyTest, Threadpool2P16T) {
+  auto constexpr N = 2;
+  auto constexpr n_threads = 16;
+
+  auto [pos, vel] = run_simulation(threadpool_sim, N, n_threads);
+
+  compare_states_to_reference(pos, vel);
+}
+
+TEST_F(NBodyTest, Threadpool16P4T) {
+  auto constexpr N = 16;
+  auto constexpr n_threads = 4;
+
+  auto [pos, vel] = run_simulation(threadpool_sim, N, n_threads);
+
+  compare_states_to_reference(pos, vel);
+}
+
+TEST_F(NBodyTest, Threadpool16P8T) {
+  auto constexpr N = 16;
   auto constexpr n_threads = 8;
 
   auto [pos, vel] = run_simulation(threadpool_sim, N, n_threads);
@@ -202,9 +229,45 @@ TEST_F(NBodyTest, Threadpool8P8T) {
   compare_states_to_reference(pos, vel);
 }
 
-TEST_F(NBodyTest, Threadpool64P8T) {
-  auto constexpr N = 64;
+TEST_F(NBodyTest, Threadpool16P16T) {
+  auto constexpr N = 16;
+  auto constexpr n_threads = 16;
+
+  auto [pos, vel] = run_simulation(threadpool_sim, N, n_threads);
+
+  compare_states_to_reference(pos, vel);
+}
+
+TEST_F(NBodyTest, Threadpool128P4T) {
+  auto constexpr N = 128;
+  auto constexpr n_threads = 4;
+
+  auto [pos, vel] = run_simulation(threadpool_sim, N, n_threads);
+
+  compare_states_to_reference(pos, vel);
+}
+
+TEST_F(NBodyTest, Threadpool128P8T) {
+  auto constexpr N = 128;
   auto constexpr n_threads = 8;
+
+  auto [pos, vel] = run_simulation(threadpool_sim, N, n_threads);
+
+  compare_states_to_reference(pos, vel);
+}
+
+TEST_F(NBodyTest, Threadpool128P16T) {
+  auto constexpr N = 128;
+  auto constexpr n_threads = 16;
+
+  auto [pos, vel] = run_simulation(threadpool_sim, N, n_threads);
+
+  compare_states_to_reference(pos, vel);
+}
+
+TEST_F(NBodyTest, Threadpool1024P4T) {
+  auto constexpr N = 1024;
+  auto constexpr n_threads = 4;
 
   auto [pos, vel] = run_simulation(threadpool_sim, N, n_threads);
 
@@ -214,6 +277,15 @@ TEST_F(NBodyTest, Threadpool64P8T) {
 TEST_F(NBodyTest, Threadpool1024P8T) {
   auto constexpr N = 1024;
   auto constexpr n_threads = 8;
+
+  auto [pos, vel] = run_simulation(threadpool_sim, N, n_threads);
+
+  compare_states_to_reference(pos, vel);
+}
+
+TEST_F(NBodyTest, Threadpool1024P16T) {
+  auto constexpr N = 1024;
+  auto constexpr n_threads = 16;
 
   auto [pos, vel] = run_simulation(threadpool_sim, N, n_threads);
 
