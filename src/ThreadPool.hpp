@@ -1,31 +1,32 @@
 #pragma once
 
-#include <condition_variable>
 #include <functional>
 #include <latch>
-#include <mutex>
-#include <queue>
 #include <thread>
 #include <vector>
 
 class ThreadPool {
  public:
-  explicit ThreadPool(std::size_t n_threads) {
-    for (std::size_t i = 0; i < n_threads; ++i) {
-      m_threads.emplace_back([this]() {
+  explicit ThreadPool(std::size_t n_threads)
+      : m_tasks(n_threads), m_tasks_ready(n_threads) {
+    for (std::size_t thread_id = 0; thread_id < n_threads; ++thread_id) {
+      m_threads.emplace_back([this, thread_id] {
         while (true) {
           auto task = std::function<void()>{};
-          {
-            auto lock = std::unique_lock{m_mx};
-            m_cv.wait(lock, [this] { return m_stop || !m_tasks.empty(); });
-
-            if (m_stop and m_tasks.empty()) {
-              break;
+          for (auto trial = 0; !m_stop and not(m_tasks_ready[thread_id]);
+               ++trial) {
+            if (trial == 8) {
+              trial = 0;
+              using namespace std::chrono_literals;
+              std::this_thread::yield();
             }
-
-            task = std::move(m_tasks.front());
-            m_tasks.pop();
           }
+          if (m_stop) {
+            break;
+          }
+
+          std::swap(task, m_tasks[thread_id]);
+          m_tasks_ready[thread_id] = false;
           task();
         }
       });
@@ -33,12 +34,7 @@ class ThreadPool {
   }
 
   ~ThreadPool() {
-    {
-      auto lock = std::unique_lock{m_mx};
-      m_stop = true;
-    }
-
-    m_cv.notify_all();
+    m_stop = true;
 
     for (auto& t : m_threads) {
       t.join();
@@ -59,21 +55,18 @@ class ThreadPool {
     //     cache_line_size;
 
     auto latch = std::latch{static_cast<std::ptrdiff_t>(n_threads)};
-    for (std::size_t thread_idx = 0; thread_idx < n_threads; ++thread_idx) {
-      auto thread_begin = thread_idx * items_per_thread;
+    for (std::size_t thread_id = 0; thread_id < n_threads; ++thread_id) {
+      auto thread_begin = thread_id * items_per_thread;
       auto thread_end =
-          std::min((thread_idx + 1) * items_per_thread, total_items);
-      {
-        auto lock = std::unique_lock{m_mx};
-        m_tasks.emplace([&latch, thread_begin, thread_end, kernel, &args...] {
-          for (auto i = thread_begin; i < thread_end; ++i) {
-            kernel(i, args...);
-          }
-          latch.count_down();
-        });
-      }
-
-      m_cv.notify_one();
+          std::min((thread_id + 1) * items_per_thread, total_items);
+      m_tasks[thread_id] = [&latch, thread_begin, thread_end, kernel,
+                            &args...] {
+        for (auto i = thread_begin; i < thread_end; ++i) {
+          kernel(i, args...);
+        }
+        latch.count_down();
+      };
+      m_tasks_ready[thread_id] = true;
     }
 
     latch.wait();
@@ -81,8 +74,7 @@ class ThreadPool {
 
  private:
   std::vector<std::jthread> m_threads{};
-  std::queue<std::function<void()>> m_tasks{};
-  std::mutex m_mx{};
-  std::condition_variable m_cv{};
-  bool m_stop{};
+  std::vector<std::function<void()>> m_tasks{};
+  std::vector<std::atomic_bool> m_tasks_ready{};
+  std::atomic<bool> m_stop{};
 };
