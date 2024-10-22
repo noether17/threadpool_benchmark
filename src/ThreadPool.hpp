@@ -65,13 +65,12 @@ class ThreadPool {
           std::min((thread_idx + 1) * items_per_thread, total_items);
       {
         auto lock = std::unique_lock{m_mx};
-        m_tasks.emplace(
-            [&latch, thread_begin, thread_end, &kernel, &args...]() {
-              for (auto i = thread_begin; i < thread_end; ++i) {
-                kernel(i, args...);
-              }
-              latch.count_down();
-            });
+        m_tasks.emplace([&latch, thread_begin, thread_end, kernel, &args...] {
+          for (auto i = thread_begin; i < thread_end; ++i) {
+            kernel(i, args...);
+          }
+          latch.count_down();
+        });
       }
 
       m_cv.notify_one();
