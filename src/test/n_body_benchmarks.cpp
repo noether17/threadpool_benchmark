@@ -24,29 +24,30 @@ auto initialize_state(std::size_t N) {
   return std::make_tuple(pos, vel);
 }
 
-void static BM_NBodySingleThreaded(benchmark::State& state) {
-  auto N = state.range(0);
-  // auto n_threads = state.range(1); // n_threads not used for single threaded.
-  auto n_steps = state.range(2);
-
-  auto t0 = 0.0;
-  auto tf = characteristic_time(N, L);
-  auto dt = (tf - t0) / n_steps;
-  auto [pos, vel] = initialize_state(N);
-
-  for (auto _ : state) {
-    auto start = std::chrono::high_resolution_clock::now();
-    single_threaded_euler(pos, vel, t0, tf, dt, single_threaded_gravity, 1);
-    auto end = std::chrono::high_resolution_clock::now();
-    auto elapsed_seconds =
-        std::chrono::duration_cast<std::chrono::duration<double>>(end - start);
-    state.SetIterationTime(elapsed_seconds.count());
-    benchmark::DoNotOptimize(pos.data());
-    benchmark::DoNotOptimize(vel.data());
-    benchmark::ClobberMemory();
-  }
-  state.SetItemsProcessed(n_steps * state.iterations());
-}
+// void static BM_NBodySingleThreaded(benchmark::State& state) {
+//   auto N = state.range(0);
+//   // auto n_threads = state.range(1); // n_threads not used for single
+//   threaded. auto n_steps = state.range(2);
+//
+//   auto t0 = 0.0;
+//   auto tf = characteristic_time(N, L);
+//   auto dt = (tf - t0) / n_steps;
+//   auto [pos, vel] = initialize_state(N);
+//
+//   for (auto _ : state) {
+//     auto start = std::chrono::high_resolution_clock::now();
+//     single_threaded_euler(pos, vel, t0, tf, dt, single_threaded_gravity, 1);
+//     auto end = std::chrono::high_resolution_clock::now();
+//     auto elapsed_seconds =
+//         std::chrono::duration_cast<std::chrono::duration<double>>(end -
+//         start);
+//     state.SetIterationTime(elapsed_seconds.count());
+//     benchmark::DoNotOptimize(pos.data());
+//     benchmark::DoNotOptimize(vel.data());
+//     benchmark::ClobberMemory();
+//   }
+//   state.SetItemsProcessed(n_steps * state.iterations());
+// }
 
 // void static BM_NBodyParallelAlgo(benchmark::State& state) {
 //   auto N = state.range(0);
@@ -155,10 +156,10 @@ void static BM_NBodyThreadpool(benchmark::State& state) {
 
 // 16 Particles
 // Single-Threaded
-BENCHMARK(BM_NBodySingleThreaded)
-    ->Args({16, 1, 10'000})
-    ->Iterations(1)
-    ->UseManualTime();
+// BENCHMARK(BM_NBodySingleThreaded)
+//    ->Args({16, 1, 10'000})
+//    ->Iterations(1)
+//    ->UseManualTime();
 
 // 4 Threads
 BENCHMARK(BM_NBodyThreaded)
@@ -192,10 +193,10 @@ BENCHMARK(BM_NBodyThreadpool)
 
 // 128 Particles
 // Single-Threaded
-BENCHMARK(BM_NBodySingleThreaded)
-    ->Args({128, 1, 10'000})
-    ->Iterations(1)
-    ->UseManualTime();
+// BENCHMARK(BM_NBodySingleThreaded)
+//    ->Args({128, 1, 10'000})
+//    ->Iterations(1)
+//    ->UseManualTime();
 
 // 4 Threads
 BENCHMARK(BM_NBodyThreaded)
@@ -229,10 +230,10 @@ BENCHMARK(BM_NBodyThreadpool)
 
 // 1024 Particles
 // Single-Threaded
-BENCHMARK(BM_NBodySingleThreaded)
-    ->Args({1024, 1, 10'000})
-    ->Iterations(1)
-    ->UseManualTime();
+// BENCHMARK(BM_NBodySingleThreaded)
+//    ->Args({1024, 1, 10'000})
+//    ->Iterations(1)
+//    ->UseManualTime();
 
 // 4 Threads
 BENCHMARK(BM_NBodyThreaded)
@@ -267,10 +268,10 @@ BENCHMARK(BM_NBodyThreadpool)
 // 8192 Particles
 // (Reduce n_steps so that single threaded can finish in under an hour.)
 // Single-Threaded
-BENCHMARK(BM_NBodySingleThreaded)
-    ->Args({8192, 1, 100})
-    ->Iterations(1)
-    ->UseManualTime();
+// BENCHMARK(BM_NBodySingleThreaded)
+//    ->Args({8192, 1, 100})
+//    ->Iterations(1)
+//    ->UseManualTime();
 
 // 4 Threads
 BENCHMARK(BM_NBodyThreaded)
