@@ -2,7 +2,6 @@
 #include <fstream>
 #include <iostream>
 #include <random>
-#include <span>
 #include <vector>
 
 #include "physics.hpp"

@@ -5,14 +5,31 @@
 #include <thread>
 #include <vector>
 
+// #define LOGGING
+#ifdef LOGGING
+#include <iostream>
+#include <sstream>
+#define DEBUG_LOG(x)                  \
+  {                                   \
+    std::stringstream output_stream;  \
+    output_stream << x << '\n';       \
+    std::cout << output_stream.str(); \
+  }
+#else
+#define DEBUG_LOG(x)
+#endif
+
 class ThreadPool {
  public:
-  explicit ThreadPool(std::size_t n_threads)
-      : m_tasks(n_threads), m_tasks_ready(n_threads) {
+  explicit ThreadPool(std::size_t n_threads, std::size_t total_items)
+      : m_tasks_ready(n_threads) {
     for (std::size_t thread_id = 0; thread_id < n_threads; ++thread_id) {
-      m_threads.emplace_back([this, thread_id] {
+      m_threads.emplace_back([this, thread_id, n_threads, total_items] {
+        auto items_per_thread = (total_items + n_threads - 1) / n_threads;
+        auto thread_begin = thread_id * items_per_thread;
+        auto thread_end =
+            std::min((thread_id + 1) * items_per_thread, total_items);
         while (true) {
-          auto task = std::function<void()>{};
           for (auto trial = 0; !m_stop and not(m_tasks_ready[thread_id]);
                ++trial) {
             if (trial == 8) {
@@ -25,9 +42,10 @@ class ThreadPool {
             break;
           }
 
-          std::swap(task, m_tasks[thread_id]);
           m_tasks_ready[thread_id] = false;
-          task();
+          DEBUG_LOG(std::this_thread::get_id() << ": starting task")
+          m_task(thread_begin, thread_end);
+          DEBUG_LOG(std::this_thread::get_id() << ": finished task")
         }
       });
     }
@@ -42,10 +60,8 @@ class ThreadPool {
   }
 
   template <typename ParallelKernel, typename... Args>
-  void call_parallel_kernel(ParallelKernel kernel, std::size_t total_items,
-                            Args&&... args) {
+  void call_parallel_kernel(ParallelKernel kernel, Args&&... args) {
     auto n_threads = m_threads.size();
-    auto items_per_thread = (total_items + n_threads - 1) / n_threads;
 
     //// prevent false sharing, assuming that all containers being modified are
     //// aligned on cache lines.
@@ -55,18 +71,15 @@ class ThreadPool {
     //     cache_line_size;
 
     auto latch = std::latch{static_cast<std::ptrdiff_t>(n_threads)};
-    for (std::size_t thread_id = 0; thread_id < n_threads; ++thread_id) {
-      auto thread_begin = thread_id * items_per_thread;
-      auto thread_end =
-          std::min((thread_id + 1) * items_per_thread, total_items);
-      m_tasks[thread_id] = [&latch, thread_begin, thread_end, kernel,
-                            &args...] {
-        for (auto i = thread_begin; i < thread_end; ++i) {
-          kernel(i, args...);
-        }
-        latch.count_down();
-      };
-      m_tasks_ready[thread_id] = true;
+    m_task = [&latch, kernel, &... args = std::forward<Args>(args)](
+                 std::size_t thread_begin, std::size_t thread_end) {
+      for (auto i = thread_begin; i < thread_end; ++i) {
+        kernel(i, args...);
+      }
+      latch.count_down();
+    };
+    for (auto& t : m_tasks_ready) {
+      t = true;
     }
 
     latch.wait();
@@ -74,7 +87,7 @@ class ThreadPool {
 
  private:
   std::vector<std::jthread> m_threads{};
-  std::vector<std::function<void()>> m_tasks{};
+  std::function<void(std::size_t, std::size_t)> m_task{};
   std::vector<std::atomic_bool> m_tasks_ready{};
   std::atomic<bool> m_stop{};
 };

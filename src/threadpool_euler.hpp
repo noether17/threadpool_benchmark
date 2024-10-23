@@ -1,6 +1,7 @@
 #pragma once
 
 #include <span>
+#include <vector>
 
 #include "ThreadPool.hpp"
 #include "physics.hpp"
@@ -9,10 +10,10 @@ template <typename AccFunc>
 void threadpool_euler(std::span<Vector3d> pos, std::span<Vector3d> vel,
                       double t0, double tf, double dt, AccFunc acc_func,
                       int n_threads) {
-  auto tp = ThreadPool{static_cast<std::size_t>(n_threads)};
+  auto tp = ThreadPool{static_cast<std::size_t>(n_threads), pos.size()};
   auto acc = std::vector<Vector3d>(pos.size());
   for (auto t = t0; t < tf; t += dt) {
-    tp.call_parallel_kernel(acc_func, pos.size(), pos, acc);
+    tp.call_parallel_kernel(acc_func, pos, acc);
 
     tp.call_parallel_kernel(
         [](std::size_t i, double dt, std::span<Vector3d> pos,
@@ -24,6 +25,6 @@ void threadpool_euler(std::span<Vector3d> pos, std::span<Vector3d> vel,
           vel[i].y += acc[i].y * dt;
           vel[i].z += acc[i].z * dt;
         },
-        pos.size(), dt, pos, vel, acc);
+        dt, pos, vel, acc);
   }
 }
