@@ -62,8 +62,7 @@ class ThreadPool {
   template <typename ParallelKernel, typename... Args>
   void call_parallel_kernel(ParallelKernel kernel, Args&&... args) {
     auto latch = std::latch{std::ssize(m_threads)};
-    m_task = [&latch, kernel, &... args = std::forward<Args>(args)](
-                 std::size_t thread_begin, std::size_t thread_end) {
+    m_task = [&](std::size_t thread_begin, std::size_t thread_end) {
       for (auto i = thread_begin; i < thread_end; ++i) {
         kernel(i, args...);
       }
