@@ -61,16 +61,7 @@ class ThreadPool {
 
   template <typename ParallelKernel, typename... Args>
   void call_parallel_kernel(ParallelKernel kernel, Args&&... args) {
-    auto n_threads = m_threads.size();
-
-    //// prevent false sharing, assuming that all containers being modified are
-    //// aligned on cache lines.
-    // auto constexpr cache_line_size = 64;
-    // items_per_thread =
-    //     ((items_per_thread + cache_line_size - 1) / cache_line_size) *
-    //     cache_line_size;
-
-    auto latch = std::latch{static_cast<std::ptrdiff_t>(n_threads)};
+    auto latch = std::latch{std::ssize(m_threads)};
     m_task = [&latch, kernel, &... args = std::forward<Args>(args)](
                  std::size_t thread_begin, std::size_t thread_end) {
       for (auto i = thread_begin; i < thread_end; ++i) {
