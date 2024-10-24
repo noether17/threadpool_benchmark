@@ -21,14 +21,12 @@
 
 class ThreadPool {
  public:
-  explicit ThreadPool(std::size_t n_threads, std::size_t total_items)
-      : m_tasks_ready(n_threads) {
-    for (std::size_t thread_id = 0; thread_id < n_threads; ++thread_id) {
-      m_threads.emplace_back([this, thread_id, n_threads, total_items] {
-        auto items_per_thread = (total_items + n_threads - 1) / n_threads;
-        auto thread_begin = thread_id * items_per_thread;
-        auto thread_end =
-            std::min((thread_id + 1) * items_per_thread, total_items);
+  explicit ThreadPool(int n_threads) : m_tasks_ready(n_threads) {
+    for (auto thread_id = 0; thread_id < n_threads; ++thread_id) {
+      m_threads.emplace_back([this, thread_id, n_threads] {
+        auto old_n_items = 0;
+        auto thread_begin = 0;
+        auto thread_end = 0;
         while (true) {
           for (auto trial = 0; !m_stop and not(m_tasks_ready[thread_id]);
                ++trial) {
@@ -40,8 +38,18 @@ class ThreadPool {
           if (m_stop) {
             break;
           }
-
           m_tasks_ready[thread_id] = false;
+
+          if (auto current_n_items = m_current_n_items.load();
+              current_n_items != old_n_items) {
+            old_n_items = current_n_items;
+            auto items_per_thread =
+                (current_n_items + n_threads - 1) / n_threads;
+            thread_begin = thread_id * items_per_thread;
+            thread_end =
+                std::min((thread_id + 1) * items_per_thread, current_n_items);
+          }
+
           DEBUG_LOG(std::this_thread::get_id() << ": starting task")
           m_task(thread_begin, thread_end);
           DEBUG_LOG(std::this_thread::get_id() << ": finished task")
@@ -59,9 +67,11 @@ class ThreadPool {
   }
 
   template <typename ParallelKernel, typename... Args>
-  void call_parallel_kernel(ParallelKernel kernel, Args&&... args) {
+  void call_parallel_kernel(ParallelKernel kernel, int n_items,
+                            Args&&... args) {
     auto latch = std::latch{std::ssize(m_threads)};
-    m_task = [&](std::size_t thread_begin, std::size_t thread_end) {
+    m_current_n_items = n_items;
+    m_task = [&](int thread_begin, int thread_end) {
       for (auto i = thread_begin; i < thread_end; ++i) {
         kernel(i, args...);
       }
@@ -77,5 +87,6 @@ class ThreadPool {
   std::vector<std::jthread> m_threads{};
   std::function<void(std::size_t, std::size_t)> m_task{};
   std::vector<std::atomic_bool> m_tasks_ready{};
+  std::atomic_int m_current_n_items{};
   std::atomic_bool m_stop{};
 };
