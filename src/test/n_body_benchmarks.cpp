@@ -163,31 +163,31 @@ void static BM_NBodyThreadpool(benchmark::State& state) {
 
 // 4 Threads
 BENCHMARK(BM_NBodyThreaded)
-    ->Args({16, 4, 10'000})
+    ->Args({16, 4, 1'000'000})
     ->Iterations(1)
     ->UseManualTime();
 BENCHMARK(BM_NBodyThreadpool)
-    ->Args({16, 4, 10'000})
+    ->Args({16, 4, 1'000'000})
     ->Iterations(1)
     ->UseManualTime();
 
 // 8 Threads
 BENCHMARK(BM_NBodyThreaded)
-    ->Args({16, 8, 10'000})
+    ->Args({16, 8, 1'000'000})
     ->Iterations(1)
     ->UseManualTime();
 BENCHMARK(BM_NBodyThreadpool)
-    ->Args({16, 8, 10'000})
+    ->Args({16, 8, 1'000'000})
     ->Iterations(1)
     ->UseManualTime();
 
 // 16 Threads
 BENCHMARK(BM_NBodyThreaded)
-    ->Args({16, 16, 10'000})
+    ->Args({16, 16, 1'000'000})
     ->Iterations(1)
     ->UseManualTime();
 BENCHMARK(BM_NBodyThreadpool)
-    ->Args({16, 16, 10'000})
+    ->Args({16, 16, 1'000'000})
     ->Iterations(1)
     ->UseManualTime();
 
@@ -200,31 +200,31 @@ BENCHMARK(BM_NBodyThreadpool)
 
 // 4 Threads
 BENCHMARK(BM_NBodyThreaded)
-    ->Args({128, 4, 10'000})
+    ->Args({128, 4, 100'000})
     ->Iterations(1)
     ->UseManualTime();
 BENCHMARK(BM_NBodyThreadpool)
-    ->Args({128, 4, 10'000})
+    ->Args({128, 4, 100'000})
     ->Iterations(1)
     ->UseManualTime();
 
 // 8 Threads
 BENCHMARK(BM_NBodyThreaded)
-    ->Args({128, 8, 10'000})
+    ->Args({128, 8, 100'000})
     ->Iterations(1)
     ->UseManualTime();
 BENCHMARK(BM_NBodyThreadpool)
-    ->Args({128, 8, 10'000})
+    ->Args({128, 8, 100'000})
     ->Iterations(1)
     ->UseManualTime();
 
 // 16 Threads
 BENCHMARK(BM_NBodyThreaded)
-    ->Args({128, 16, 10'000})
+    ->Args({128, 16, 100'000})
     ->Iterations(1)
     ->UseManualTime();
 BENCHMARK(BM_NBodyThreadpool)
-    ->Args({128, 16, 10'000})
+    ->Args({128, 16, 100'000})
     ->Iterations(1)
     ->UseManualTime();
 
