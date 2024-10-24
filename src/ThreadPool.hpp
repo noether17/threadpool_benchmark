@@ -34,7 +34,6 @@ class ThreadPool {
                ++trial) {
             if (trial == 8) {
               trial = 0;
-              using namespace std::chrono_literals;
               std::this_thread::yield();
             }
           }
@@ -71,7 +70,6 @@ class ThreadPool {
     for (auto& t : m_tasks_ready) {
       t = true;
     }
-
     latch.wait();
   }
 
@@ -79,5 +77,5 @@ class ThreadPool {
   std::vector<std::jthread> m_threads{};
   std::function<void(std::size_t, std::size_t)> m_task{};
   std::vector<std::atomic_bool> m_tasks_ready{};
-  std::atomic<bool> m_stop{};
+  std::atomic_bool m_stop{};
 };
