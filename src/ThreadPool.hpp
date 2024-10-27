@@ -19,6 +19,20 @@
 #define DEBUG_LOG(x)
 #endif
 
+template <typename Predicate>
+bool spinlock(std::stop_token& stoken, Predicate pred) {
+  for (auto trial = 0; not stoken.stop_requested(); ++trial) {
+    if (pred()) {
+      return true;
+    }
+    if (trial == 8) {
+      trial = 0;
+      std::this_thread::yield();
+    }
+  }
+  return false;
+}
+
 class ThreadPool {
  public:
   explicit ThreadPool(int n_threads) : m_tasks_ready(n_threads) {
@@ -30,16 +44,10 @@ class ThreadPool {
             auto thread_begin = 0;
             auto thread_end = 0;
             while (true) {
-              for (auto trial = 0;
-                   not st.stop_requested() and not(m_tasks_ready[thread_id]);
-                   ++trial) {
-                if (trial == 8) {
-                  trial = 0;
-                  std::this_thread::yield();
-                }
-              }
-              if (st.stop_requested()) {
-                break;
+              if (not spinlock(st, [this, thread_id]() {
+                    return m_tasks_ready[thread_id].load();
+                  })) {
+                return;
               }
               m_tasks_ready[thread_id] = false;
 
@@ -80,9 +88,9 @@ class ThreadPool {
   }
 
  private:
-  std::stop_source m_stop_source{};
-  std::vector<std::jthread> m_threads{};
   std::function<void(std::size_t, std::size_t)> m_task{};
   std::vector<std::atomic_bool> m_tasks_ready{};
+  std::stop_source m_stop_source{};
+  std::vector<std::jthread> m_threads{};
   std::atomic_int m_current_n_items{};
 };
