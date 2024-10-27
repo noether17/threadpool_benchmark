@@ -33,19 +33,12 @@ class ThreadPool {
               for (auto trial = 0;
                    not st.stop_requested() and not(m_tasks_ready[thread_id]);
                    ++trial) {
-                DEBUG_LOG(std::this_thread::get_id()
-                          << ": in spinlock; stop requested: "
-                          << st.stop_requested()
-                          << "; m_tasks_ready[thread_id]: "
-                          << m_tasks_ready[thread_id])
                 if (trial == 8) {
                   trial = 0;
                   std::this_thread::yield();
                 }
               }
               if (st.stop_requested()) {
-                DEBUG_LOG(std::this_thread::get_id()
-                          << ": stop requested, terminating loop")
                 break;
               }
               m_tasks_ready[thread_id] = false;
@@ -60,27 +53,14 @@ class ThreadPool {
                                       current_n_items);
               }
 
-              DEBUG_LOG(std::this_thread::get_id() << ": starting task")
               m_task(thread_begin, thread_end);
-              DEBUG_LOG(std::this_thread::get_id() << ": finished task")
             }
           },
           stop_tkn);
     }
   }
 
-  ~ThreadPool() {
-    m_stop_source.request_stop();
-    // m_threads.front().request_stop();
-    // for (auto& t : m_threads) {
-    //  t.request_stop();
-    //}
-    DEBUG_LOG(std::this_thread::get_id()
-              << ": in ~ThreadPool; stop requested: "
-              << m_stop_source.stop_requested()
-              << "; stop possible: " << m_stop_source.stop_possible())
-    // std::exit(0);
-  }
+  ~ThreadPool() { m_stop_source.request_stop(); }
 
   template <typename ParallelKernel, typename... Args>
   void call_parallel_kernel(ParallelKernel kernel, int n_items,
